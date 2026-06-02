@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>AZ Clean • Auto Chunk Sorter</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    :root{
+      --bg:#0b1020;--card:#151b2e;--ink:#f8fafc;--muted:#aab4c5;--line:#263149;
+      --good:#22c55e;--warn:#f59e0b;--bad:#ef4444;--accent:#8b5cf6;--blue:#38bdf8;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#080b14,#111827);color:var(--ink)}
+    header{padding:22px 16px 12px;position:sticky;top:0;background:rgba(11,16,32,.92);backdrop-filter:blur(16px);z-index:5;border-bottom:1px solid var(--line)}
+    h1{margin:0;font-size:25px;letter-spacing:.2px}
+    .sub{color:var(--muted);margin-top:6px;font-size:14px}
+    main{padding:16px;max-width:1100px;margin:0 auto 60px}
+    .grid{display:grid;grid-template-columns:1fr;gap:14px}
+    @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
+    .card{background:rgba(21,27,46,.95);border:1px solid var(--line);border-radius:20px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
+    label{display:block;font-weight:800;margin:0 0 8px}
+    textarea{width:100%;min-height:260px;resize:vertical;background:#080b14;color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:14px;font-size:15px;line-height:1.45}
+    input[type=file]{width:100%;padding:14px;border:1px dashed #4b5563;border-radius:16px;background:#0f172a;color:var(--ink)}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    button{appearance:none;border:0;border-radius:14px;padding:12px 14px;font-weight:900;color:white;background:#374151;cursor:pointer}
+    button.primary{background:linear-gradient(135deg,var(--accent),#2563eb)}
+    button.good{background:#15803d}
+    button.warn{background:#b45309}
+    button.bad{background:#b91c1c}
+    button:active{transform:scale(.98)}
+    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+    @media(min-width:700px){.stats{grid-template-columns:repeat(4,1fr)}}
+    .stat{background:#0f172a;border:1px solid var(--line);padding:12px;border-radius:14px}
+    .stat b{display:block;font-size:22px}
+    .stat span{color:var(--muted);font-size:12px}
+    .letters{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:12px}
+    @media(min-width:700px){.letters{grid-template-columns:repeat(13,1fr)}}
+    .letter{padding:10px 6px;text-align:center;border-radius:12px;border:1px solid var(--line);background:#0f172a;font-weight:900}
+    .letter.active{outline:2px solid var(--blue)}
+    pre{white-space:pre-wrap;word-break:break-word;background:#080b14;border:1px solid var(--line);border-radius:16px;padding:14px;max-height:420px;overflow:auto;line-height:1.45}
+    .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:8px 10px;background:#0f172a;color:var(--muted);font-size:13px}
+    .small{font-size:13px;color:var(--muted)}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+<header>
+  <h1>AZ Clean • Auto Chunk Sorter</h1>
+  <div class="sub">Offline iPad app: clean text, remove junk, deduplicate, sort A–Z, export master files.</div>
+</header>
+
+<main>
+  <section class="card">
+    <label>1. Load text file or paste text</label>
+    <div class="row">
+      <input id="fileInput" type="file" accept=".txt,.text,.csv,.json,.md,.html,.htm" />
+    </div>
+    <p class="small">Works best with .txt. Nothing uploads anywhere. Processing happens inside your iPad browser.</p>
+    <textarea id="rawInput" placeholder="Paste your raw alliterations here..."></textarea>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="processBtn">Clean + Sort A–Z</button>
+      <button id="clearBtn">Clear</button>
+      <span class="pill">Rules: uppercase · dedupe · 2+ words · letters/spaces only</span>
+    </div>
+  </section>
+
+  <section class="stats" id="stats">
+    <div class="stat"><b id="rawCount">0</b><span>Raw lines</span></div>
+    <div class="stat"><b id="keptCount">0</b><span>Kept</span></div>
+    <div class="stat"><b id="dupCount">0</b><span>Duplicates</span></div>
+    <div class="stat"><b id="reviewCount">0</b><span>Review / junk</span></div>
+  </section>
+
+  <section class="grid">
+    <div class="card">
+      <label>2. A–Z Buckets</label>
+      <div class="letters" id="letters"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="good" id="downloadMasterBtn">Download MASTER_AZ_INDEX.txt</button>
+        <button class="warn" id="downloadLetterBtn">Download Selected Letter</button>
+        <button id="downloadReviewBtn">Download REVIEW_NOT_DELETED.txt</button>
+      </div>
+      <p class="small">Tap a letter to preview that bucket, then download it.</p>
+    </div>
+
+    <div class="card">
+      <label id="previewTitle">Preview</label>
+      <pre id="preview"></pre>
+    </div>
+  </section>
+
+  <section class="card">
+    <label>3. Process Log</label>
+    <pre id="log">Ready.</pre>
+  </section>
+</main>
+
+<script>
+const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+let buckets = Object.fromEntries(letters.map(l=>[l,[]]));
+let duplicates = [];
+let review = [];
+let master = [];
+let selectedLetter = "A";
+
+const el = id => document.getElementById(id);
+const fileInput = el("fileInput");
+const rawInput = el("rawInput");
+const preview = el("preview");
+const previewTitle = el("previewTitle");
+const log = el("log");
+
+function normalizeLine(line){
+  let original = String(line || "").trim();
+  if(!original) return {status:"blank", original, clean:""};
+  let upper = original.toUpperCase();
+  let lettersOnly = upper.replace(/[^A-Z\s]/g, " ").replace(/\s+/g, " ").trim();
+  let words = lettersOnly.split(/\s+/).filter(Boolean);
+  if(words.length < 2) return {status:"review", original, clean:lettersOnly, reason:"LESS_THAN_TWO_WORDS_OR_JUNK"};
+  if(!/^[A-Z]/.test(lettersOnly)) return {status:"review", original, clean:lettersOnly, reason:"NO_START_LETTER"};
+  return {status:"keep", original, clean:lettersOnly};
+}
+
+function renderLetters(){
+  const wrap = el("letters");
+  wrap.innerHTML = "";
+  letters.forEach(l=>{
+    const d = document.createElement("button");
+    d.className = "letter" + (l===selectedLetter ? " active" : "");
+    d.textContent = `${l} ${buckets[l]?.length || 0}`;
+    d.onclick = () => { selectedLetter = l; renderLetters(); renderPreview(); };
+    wrap.appendChild(d);
+  });
+}
+
+function renderPreview(){
+  previewTitle.textContent = `Preview: ${selectedLetter}`;
+  preview.textContent = (buckets[selectedLetter] || []).join("\n") || "No lines in this bucket yet.";
+}
+
+function processText(){
+  buckets = Object.fromEntries(letters.map(l=>[l,[]]));
+  duplicates = [];
+  review = [];
+  master = [];
+
+  const rawLines = rawInput.value.split(/\r?\n/);
+  const seen = new Set();
+
+  for(const line of rawLines){
+    const r = normalizeLine(line);
+    if(r.status === "blank") continue;
+    if(r.status === "review"){
+      review.push(`${r.original}${r.clean ? "  =>  " + r.clean : ""}${r.reason ? "  [" + r.reason + "]" : ""}`);
+      continue;
+    }
+    if(seen.has(r.clean)){
+      duplicates.push(r.clean);
+      continue;
+    }
+    seen.add(r.clean);
+    const first = r.clean[0];
+    if(buckets[first]) buckets[first].push(r.clean);
+    else review.push(`${r.original}  [NON_AZ_START]`);
+  }
+
+  letters.forEach(l => buckets[l].sort((a,b)=>a.localeCompare(b)));
+  master = letters.flatMap(l => buckets[l]);
+
+  el("rawCount").textContent = rawLines.filter(x=>x.trim()).length;
+  el("keptCount").textContent = master.length;
+  el("dupCount").textContent = duplicates.length;
+  el("reviewCount").textContent = review.length;
+
+  renderLetters();
+  renderPreview();
+
+  log.textContent =
+`PROCESS COMPLETE
+
+RAW NONBLANK LINES: ${rawLines.filter(x=>x.trim()).length}
+KEPT CLEAN LINES: ${master.length}
+DUPLICATES REMOVED: ${duplicates.length}
+REVIEW / JUNK HELD: ${review.length}
+
+OUTPUTS READY:
+- MASTER_AZ_INDEX.txt
+- SELECTED LETTER FILE
+- REVIEW_NOT_DELETED.txt
+
+NO ORIGINAL FILES WERE MODIFIED.`;
+}
+
+function download(filename, text){
+  const blob = new Blob([text || ""], {type:"text/plain;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 500);
+}
+
+fileInput.addEventListener("change", async e=>{
+  const file = e.target.files && e.target.files[0];
+  if(!file) return;
+  const text = await file.text();
+  rawInput.value = text;
+  log.textContent = `Loaded file: ${file.name}\nCharacters: ${text.length}\nNow press Clean + Sort A–Z.`;
+});
+
+el("processBtn").onclick = processText;
+el("clearBtn").onclick = () => {
+  rawInput.value = "";
+  buckets = Object.fromEntries(letters.map(l=>[l,[]]));
+  duplicates = [];
+  review = [];
+  master = [];
+  el("rawCount").textContent = el("keptCount").textContent = el("dupCount").textContent = el("reviewCount").textContent = "0";
+  log.textContent = "Ready.";
+  renderLetters();
+  renderPreview();
+};
+
+el("downloadMasterBtn").onclick = () => download("MASTER_AZ_INDEX.txt", master.join("\n"));
+el("downloadLetterBtn").onclick = () => download(`${selectedLetter}_CLEAN_BUCKET.txt`, (buckets[selectedLetter] || []).join("\n"));
+el("downloadReviewBtn").onclick = () => download("REVIEW_NOT_DELETED.txt", review.join("\n"));
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+}
+renderLetters();
+renderPreview();
+</script>
+</body>
+</html>

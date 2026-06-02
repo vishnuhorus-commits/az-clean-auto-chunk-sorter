@@ -1,0 +1,10 @@
+{
+  "name": "AZ Clean Auto Chunk Sorter",
+  "short_name": "AZ Clean",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#111827",
+  "description": "Offline iPad app for cleaning, deduplicating, and sorting alliteration text into A-Z buckets.",
+  "icons": []
+}
