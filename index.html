@@ -3,236 +3,385 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <meta name="theme-color" content="#111827" />
-  <title>AZ Clean • Auto Chunk Sorter</title>
-  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0b1020" />
+  <title>AZ Clean Auto Chunk Sorter</title>
+  <link rel="manifest" href="manifest.json" />
   <style>
-    :root{
-      --bg:#0b1020;--card:#151b2e;--ink:#f8fafc;--muted:#aab4c5;--line:#263149;
-      --good:#22c55e;--warn:#f59e0b;--bad:#ef4444;--accent:#8b5cf6;--blue:#38bdf8;
-    }
+    :root{--bg:#070b14;--panel:#111827;--card:#162033;--ink:#f8fafc;--muted:#aab4c5;--line:#283449;--accent:#8b5cf6;--blue:#38bdf8;--green:#16a34a;--amber:#b45309;--red:#b91c1c}
     *{box-sizing:border-box}
-    body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:linear-gradient(180deg,#080b14,#111827);color:var(--ink)}
-    header{padding:22px 16px 12px;position:sticky;top:0;background:rgba(11,16,32,.92);backdrop-filter:blur(16px);z-index:5;border-bottom:1px solid var(--line)}
+    body{margin:0;background:radial-gradient(circle at top,#172554 0,#070b14 42%,#030712 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
+    header{position:sticky;top:0;z-index:9;background:rgba(7,11,20,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:18px 14px}
+    main{max-width:1180px;margin:auto;padding:14px 14px 80px}
     h1{margin:0;font-size:25px;letter-spacing:.2px}
-    .sub{color:var(--muted);margin-top:6px;font-size:14px}
-    main{padding:16px;max-width:1100px;margin:0 auto 60px}
+    .sub{color:var(--muted);font-size:14px;margin-top:6px;line-height:1.35}
     .grid{display:grid;grid-template-columns:1fr;gap:14px}
-    @media(min-width:900px){.grid{grid-template-columns:1fr 1fr}}
-    .card{background:rgba(21,27,46,.95);border:1px solid var(--line);border-radius:20px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.25)}
-    label{display:block;font-weight:800;margin:0 0 8px}
-    textarea{width:100%;min-height:260px;resize:vertical;background:#080b14;color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:14px;font-size:15px;line-height:1.45}
-    input[type=file]{width:100%;padding:14px;border:1px dashed #4b5563;border-radius:16px;background:#0f172a;color:var(--ink)}
+    .two{display:grid;grid-template-columns:1fr;gap:14px}
+    @media(min-width:880px){.two{grid-template-columns:1fr 1fr}.grid{grid-template-columns:1.05fr .95fr}}
+    .card{background:rgba(17,24,39,.95);border:1px solid var(--line);border-radius:20px;padding:14px;box-shadow:0 22px 70px rgba(0,0,0,.32)}
+    label{font-weight:900;display:block;margin:0 0 8px}
+    .small{color:var(--muted);font-size:13px;line-height:1.35}
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .stack{display:grid;gap:10px}
+    textarea{width:100%;min-height:300px;resize:vertical;background:#050814;color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:12px;font-size:15px;line-height:1.45}
+    input[type=file]{width:100%;padding:14px;border:1px dashed #53627a;border-radius:16px;background:#0b1220;color:var(--ink)}
     button{appearance:none;border:0;border-radius:14px;padding:12px 14px;font-weight:900;color:white;background:#374151;cursor:pointer}
-    button.primary{background:linear-gradient(135deg,var(--accent),#2563eb)}
-    button.good{background:#15803d}
-    button.warn{background:#b45309}
-    button.bad{background:#b91c1c}
     button:active{transform:scale(.98)}
-    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
-    @media(min-width:700px){.stats{grid-template-columns:repeat(4,1fr)}}
-    .stat{background:#0f172a;border:1px solid var(--line);padding:12px;border-radius:14px}
-    .stat b{display:block;font-size:22px}
+    button.primary{background:linear-gradient(135deg,var(--accent),#2563eb)}
+    button.good{background:var(--green)}
+    button.warn{background:var(--amber)}
+    button.bad{background:var(--red)}
+    button.ghost{background:#1f2937;border:1px solid var(--line)}
+    .checks{display:grid;grid-template-columns:1fr;gap:8px}
+    @media(min-width:620px){.checks{grid-template-columns:repeat(2,1fr)}}
+    .check{background:#0b1220;border:1px solid var(--line);border-radius:14px;padding:10px;color:var(--muted);font-size:13px}
+    .check input{margin-right:7px}
+    .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    @media(min-width:760px){.stats{grid-template-columns:repeat(6,1fr)}}
+    .stat{background:#0b1220;border:1px solid var(--line);border-radius:15px;padding:11px}
+    .stat b{display:block;font-size:23px}
     .stat span{color:var(--muted);font-size:12px}
-    .letters{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-top:12px}
-    @media(min-width:700px){.letters{grid-template-columns:repeat(13,1fr)}}
-    .letter{padding:10px 6px;text-align:center;border-radius:12px;border:1px solid var(--line);background:#0f172a;font-weight:900}
-    .letter.active{outline:2px solid var(--blue)}
-    pre{white-space:pre-wrap;word-break:break-word;background:#080b14;border:1px solid var(--line);border-radius:16px;padding:14px;max-height:420px;overflow:auto;line-height:1.45}
-    .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:8px 10px;background:#0f172a;color:var(--muted);font-size:13px}
-    .small{font-size:13px;color:var(--muted)}
-    .hidden{display:none}
+    .letters{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+    @media(min-width:760px){.letters{grid-template-columns:repeat(13,1fr)}}
+    .letter{padding:9px 5px;border-radius:12px;background:#0b1220;border:1px solid var(--line);text-align:center}
+    .letter.active{outline:2px solid var(--blue);color:white}
+    pre{white-space:pre-wrap;word-break:break-word;background:#050814;border:1px solid var(--line);border-radius:16px;padding:12px;max-height:430px;overflow:auto;line-height:1.45}
+    .pill{display:inline-flex;border:1px solid var(--line);border-radius:999px;background:#0b1220;color:var(--muted);padding:7px 10px;font-size:13px}
   </style>
 </head>
 <body>
 <header>
-  <h1>AZ Clean • Auto Chunk Sorter</h1>
-  <div class="sub">Offline iPad app: clean text, remove junk, deduplicate, sort A–Z, export master files.</div>
+  <h1>AZ Clean Auto Chunk Sorter</h1>
+  <div class="sub">Production iPad-safe offline engine: load many text files, clean junk, deduplicate, sort A–Z, preserve rejects, and export master archive files.</div>
 </header>
 
 <main>
-  <section class="card">
-    <label>1. Load text file or paste text</label>
-    <div class="row">
-      <input id="fileInput" type="file" accept=".txt,.text,.csv,.json,.md,.html,.htm" />
+  <section class="grid">
+    <div class="card stack">
+      <label>1. Drop files or paste raw text</label>
+      <input id="fileInput" type="file" multiple accept=".txt,.text,.md,.csv,.json,.html,.htm" />
+      <div class="small">Use multiple .txt files when possible. Nothing uploads. Everything runs inside the browser.</div>
+      <textarea id="rawInput" placeholder="Paste raw alliterations here, or load files above..."></textarea>
+
+      <div class="checks">
+        <div class="check"><input id="lettersOnly" type="checkbox" checked />Keep letters and spaces only</div>
+        <div class="check"><input id="dedupe" type="checkbox" checked />Remove exact duplicates</div>
+        <div class="check"><input id="sortAZ" type="checkbox" checked />Sort each A–Z bucket</div>
+        <div class="check"><input id="strictAllit" type="checkbox" />Strict alliteration only: first two words same letter</div>
+        <div class="check"><input id="keepHeaders" type="checkbox" checked />Add A–Z headers in master export</div>
+        <div class="check">Minimum words: <input id="minWords" type="number" min="1" max="20" value="2" style="width:64px;background:#050814;color:white;border:1px solid #334155;border-radius:8px;padding:5px" /></div>
+      </div>
+
+      <div class="row">
+        <button class="primary" id="processBtn">Build Clean A–Z Index</button>
+        <button class="ghost" id="clearBtn">Clear</button>
+        <span class="pill">SAFE MODE: originals are never edited</span>
+      </div>
     </div>
-    <p class="small">Works best with .txt. Nothing uploads anywhere. Processing happens inside your iPad browser.</p>
-    <textarea id="rawInput" placeholder="Paste your raw alliterations here..."></textarea>
-    <div class="row" style="margin-top:12px">
-      <button class="primary" id="processBtn">Clean + Sort A–Z</button>
-      <button id="clearBtn">Clear</button>
-      <span class="pill">Rules: uppercase · dedupe · 2+ words · letters/spaces only</span>
+
+    <div class="card stack">
+      <label>Mission map</label>
+      <pre>00_DROP_ALLITERATION_HERE  → load files here
+01_ORIGINALS_SAVED         → keep untouched originals outside app
+02_CLEANED_SEPARATED_AZ    → export letter buckets
+03_MERGED_MASTER           → export MERGED_ALL_LINES
+04_DEDUPED_MASTER          → export DEDUPED_ALL_LINES
+05_INDEXES                 → export MASTER_AZ_INDEX
+06_LOGS                    → export RUN_REPORT + CHECKSUM_MANIFEST
+99_QUARANTINE              → REVIEW + DUPLICATES files</pre>
+      <div class="small">This page is the bridge: iCloud / Dropbox / Google Drive files can be selected manually, processed, and downloaded as sealed outputs.</div>
     </div>
   </section>
 
-  <section class="stats" id="stats">
+  <section class="stats" style="margin:14px 0">
+    <div class="stat"><b id="fileCount">0</b><span>Files loaded</span></div>
     <div class="stat"><b id="rawCount">0</b><span>Raw lines</span></div>
     <div class="stat"><b id="keptCount">0</b><span>Kept</span></div>
     <div class="stat"><b id="dupCount">0</b><span>Duplicates</span></div>
-    <div class="stat"><b id="reviewCount">0</b><span>Review / junk</span></div>
+    <div class="stat"><b id="reviewCount">0</b><span>Review</span></div>
+    <div class="stat"><b id="letterCount">0</b><span>Letters active</span></div>
   </section>
 
-  <section class="grid">
-    <div class="card">
-      <label>2. A–Z Buckets</label>
+  <section class="two">
+    <div class="card stack">
+      <label>2. A–Z buckets</label>
       <div class="letters" id="letters"></div>
-      <div class="row" style="margin-top:12px">
-        <button class="good" id="downloadMasterBtn">Download MASTER_AZ_INDEX.txt</button>
-        <button class="warn" id="downloadLetterBtn">Download Selected Letter</button>
-        <button id="downloadReviewBtn">Download REVIEW_NOT_DELETED.txt</button>
+
+      <div class="row">
+        <button class="good" id="downloadMaster">MASTER_AZ_INDEX</button>
+        <button class="good" id="downloadLetter">Selected Letter</button>
+        <button class="warn" id="downloadReview">Review</button>
+        <button class="warn" id="downloadDups">Duplicates</button>
       </div>
-      <p class="small">Tap a letter to preview that bucket, then download it.</p>
+
+      <div class="row">
+        <button class="ghost" id="downloadMerged">Merged All Lines</button>
+        <button class="ghost" id="downloadDeduped">Deduped All Lines</button>
+        <button class="ghost" id="downloadReport">Run Report</button>
+        <button class="ghost" id="downloadManifest">Checksum Manifest</button>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card stack">
       <label id="previewTitle">Preview</label>
-      <pre id="preview"></pre>
+      <pre id="preview">Ready.</pre>
     </div>
   </section>
 
-  <section class="card">
-    <label>3. Process Log</label>
-    <pre id="log">Ready.</pre>
+  <section class="card" style="margin-top:14px">
+    <label>3. Run log</label>
+    <pre id="log">Ready. Load files or paste text, then press Build Clean A–Z Index.</pre>
   </section>
 </main>
 
 <script>
-const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-let buckets = Object.fromEntries(letters.map(l=>[l,[]]));
+const ABC = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+const $ = id => document.getElementById(id);
+
+let selected = "A";
+let filesLoaded = [];
+let buckets;
+let mergedLines = [];
+let dedupedLines = [];
 let duplicates = [];
 let review = [];
-let master = [];
-let selectedLetter = "A";
+let report = "";
+let manifest = "";
 
-const el = id => document.getElementById(id);
-const fileInput = el("fileInput");
-const rawInput = el("rawInput");
-const preview = el("preview");
-const previewTitle = el("previewTitle");
-const log = el("log");
+function resetData(){
+  buckets = Object.fromEntries(ABC.map(x => [x, []]));
+  mergedLines = [];
+  dedupedLines = [];
+  duplicates = [];
+  review = [];
+  report = "";
+  manifest = "";
+}
 
-function normalizeLine(line){
-  let original = String(line || "").trim();
-  if(!original) return {status:"blank", original, clean:""};
-  let upper = original.toUpperCase();
-  let lettersOnly = upper.replace(/[^A-Z\s]/g, " ").replace(/\s+/g, " ").trim();
-  let words = lettersOnly.split(/\s+/).filter(Boolean);
-  if(words.length < 2) return {status:"review", original, clean:lettersOnly, reason:"LESS_THAN_TWO_WORDS_OR_JUNK"};
-  if(!/^[A-Z]/.test(lettersOnly)) return {status:"review", original, clean:lettersOnly, reason:"NO_START_LETTER"};
-  return {status:"keep", original, clean:lettersOnly};
+function escCsv(s){
+  return '"' + String(s ?? "").replaceAll('"','""') + '"';
+}
+
+async function sha256(text){
+  try{
+    const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,"0")).join("");
+  }catch(e){
+    return "UNAVAILABLE";
+  }
+}
+
+function normalize(raw){
+  const original = String(raw || "").trim();
+
+  if(!original){
+    return {status:"blank", original, clean:"", reason:"BLANK"};
+  }
+
+  let clean = original.toUpperCase();
+
+  if($("lettersOnly").checked){
+    clean = clean.replace(/[^A-Z\s]/g, " ");
+  }
+
+  clean = clean.replace(/\s+/g, " ").trim();
+
+  const words = clean.split(/\s+/).filter(Boolean);
+  const min = Math.max(1, parseInt($("minWords").value || "2", 10));
+
+  if(words.length < min){
+    return {status:"review", original, clean, reason:"LESS_THAN_MIN_WORDS"};
+  }
+
+  if(!/^[A-Z]/.test(clean)){
+    return {status:"review", original, clean, reason:"NO_AZ_START"};
+  }
+
+  if($("strictAllit").checked && words.length >= 2 && words[0][0] !== words[1][0]){
+    return {status:"review", original, clean, reason:"NOT_STRICT_ALLITERATION"};
+  }
+
+  return {status:"keep", original, clean, first:clean[0]};
+}
+
+function masterText(){
+  if(!$("keepHeaders").checked){
+    return dedupedLines.join("\n");
+  }
+
+  return ABC.map(l => `## ${l}\n${(buckets[l] || []).join("\n")}`).join("\n\n").trim();
 }
 
 function renderLetters(){
-  const wrap = el("letters");
-  wrap.innerHTML = "";
-  letters.forEach(l=>{
-    const d = document.createElement("button");
-    d.className = "letter" + (l===selectedLetter ? " active" : "");
-    d.textContent = `${l} ${buckets[l]?.length || 0}`;
-    d.onclick = () => { selectedLetter = l; renderLetters(); renderPreview(); };
-    wrap.appendChild(d);
+  const box = $("letters");
+  box.innerHTML = "";
+
+  ABC.forEach(l => {
+    const b = document.createElement("button");
+    b.className = "letter" + (l === selected ? " active" : "");
+    b.textContent = `${l} ${(buckets[l] || []).length}`;
+    b.onclick = () => {
+      selected = l;
+      renderLetters();
+      renderPreview();
+    };
+    box.appendChild(b);
   });
 }
 
 function renderPreview(){
-  previewTitle.textContent = `Preview: ${selectedLetter}`;
-  preview.textContent = (buckets[selectedLetter] || []).join("\n") || "No lines in this bucket yet.";
+  const lines = buckets[selected] || [];
+  $("previewTitle").textContent = `Preview: ${selected} bucket`;
+  $("preview").textContent = lines.join("\n") || "No clean lines in this bucket.";
 }
 
-function processText(){
-  buckets = Object.fromEntries(letters.map(l=>[l,[]]));
-  duplicates = [];
-  review = [];
-  master = [];
+function setStats(raw){
+  $("fileCount").textContent = filesLoaded.length;
+  $("rawCount").textContent = raw;
+  $("keptCount").textContent = dedupedLines.length;
+  $("dupCount").textContent = duplicates.length;
+  $("reviewCount").textContent = review.length;
+  $("letterCount").textContent = ABC.filter(l => (buckets[l] || []).length).length;
+}
 
-  const rawLines = rawInput.value.split(/\r?\n/);
+async function processText(){
+  resetData();
+
+  const text = $("rawInput").value || "";
+  const rawLines = text.split(/\r?\n/);
   const seen = new Set();
+  const total = rawLines.filter(x => x.trim()).length;
 
-  for(const line of rawLines){
-    const r = normalizeLine(line);
+  for(let i = 0; i < rawLines.length; i++){
+    const r = normalize(rawLines[i]);
+
     if(r.status === "blank") continue;
+
+    mergedLines.push(r.clean || r.original);
+
     if(r.status === "review"){
-      review.push(`${r.original}${r.clean ? "  =>  " + r.clean : ""}${r.reason ? "  [" + r.reason + "]" : ""}`);
+      review.push(`${r.original}${r.clean ? "  =>  " + r.clean : ""}  [${r.reason}]`);
       continue;
     }
-    if(seen.has(r.clean)){
+
+    if($("dedupe").checked && seen.has(r.clean)){
       duplicates.push(r.clean);
       continue;
     }
+
     seen.add(r.clean);
-    const first = r.clean[0];
-    if(buckets[first]) buckets[first].push(r.clean);
-    else review.push(`${r.original}  [NON_AZ_START]`);
+    dedupedLines.push(r.clean);
+
+    if(buckets[r.first]){
+      buckets[r.first].push(r.clean);
+    } else {
+      review.push(`${r.original}  [NON_AZ_START]`);
+    }
+
+    if(i % 5000 === 0){
+      $("log").textContent = `Processing line ${i.toLocaleString()} of ${rawLines.length.toLocaleString()}...`;
+      await new Promise(requestAnimationFrame);
+    }
   }
 
-  letters.forEach(l => buckets[l].sort((a,b)=>a.localeCompare(b)));
-  master = letters.flatMap(l => buckets[l]);
+  if($("sortAZ").checked){
+    ABC.forEach(l => buckets[l].sort((a,b) => a.localeCompare(b)));
+    dedupedLines = ABC.flatMap(l => buckets[l]);
+  }
 
-  el("rawCount").textContent = rawLines.filter(x=>x.trim()).length;
-  el("keptCount").textContent = master.length;
-  el("dupCount").textContent = duplicates.length;
-  el("reviewCount").textContent = review.length;
+  const now = new Date().toISOString();
+  const active = ABC.filter(l => (buckets[l] || []).length).join(" ") || "NONE";
 
+  report = `AZ CLEAN AUTO CHUNK SORTER RUN REPORT
+RUN_TIME: ${now}
+FILES_LOADED: ${filesLoaded.length}
+RAW_NONBLANK_LINES: ${total}
+KEPT_CLEAN_LINES: ${dedupedLines.length}
+DUPLICATES_REMOVED: ${duplicates.length}
+REVIEW_NOT_DELETED: ${review.length}
+ACTIVE_LETTERS: ${active}
+RULES: uppercase, min_words=${$("minWords").value}, letters_only=${$("lettersOnly").checked}, dedupe=${$("dedupe").checked}, strict_alliteration=${$("strictAllit").checked}
+
+NO ORIGINAL FILES WERE MODIFIED.`;
+
+  if(!manifest){
+    manifest = "file_name,size_bytes,sha256\n" +
+      filesLoaded.map(f => [escCsv(f.name), f.size, escCsv(f.sha)].join(",")).join("\n");
+  }
+
+  setStats(total);
   renderLetters();
   renderPreview();
 
-  log.textContent =
-`PROCESS COMPLETE
-
-RAW NONBLANK LINES: ${rawLines.filter(x=>x.trim()).length}
-KEPT CLEAN LINES: ${master.length}
-DUPLICATES REMOVED: ${duplicates.length}
-REVIEW / JUNK HELD: ${review.length}
-
-OUTPUTS READY:
-- MASTER_AZ_INDEX.txt
-- SELECTED LETTER FILE
-- REVIEW_NOT_DELETED.txt
-
-NO ORIGINAL FILES WERE MODIFIED.`;
+  $("log").textContent = report + "\n\nOUTPUTS READY: MASTER, LETTER BUCKETS, REVIEW, DUPLICATES, REPORT, MANIFEST.";
 }
 
-function download(filename, text){
+function download(name, text){
   const blob = new Blob([text || ""], {type:"text/plain;charset=utf-8"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
+
   a.href = url;
-  a.download = filename;
+  a.download = name;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url), 500);
+
+  setTimeout(() => URL.revokeObjectURL(url), 700);
 }
 
-fileInput.addEventListener("change", async e=>{
-  const file = e.target.files && e.target.files[0];
-  if(!file) return;
-  const text = await file.text();
-  rawInput.value = text;
-  log.textContent = `Loaded file: ${file.name}\nCharacters: ${text.length}\nNow press Clean + Sort A–Z.`;
+$("fileInput").addEventListener("change", async e => {
+  const list = [...(e.target.files || [])];
+  filesLoaded = [];
+  let parts = [];
+
+  $("log").textContent = `Loading ${list.length} file(s)...`;
+
+  for(const file of list){
+    const text = await file.text();
+    const sha = await sha256(text);
+
+    filesLoaded.push({name:file.name, size:file.size, sha});
+    parts.push(`\n### SOURCE_FILE: ${file.name}\n` + text);
+
+    await new Promise(requestAnimationFrame);
+  }
+
+  $("rawInput").value = parts.join("\n");
+
+  manifest = "file_name,size_bytes,sha256\n" +
+    filesLoaded.map(f => [escCsv(f.name), f.size, escCsv(f.sha)].join(",")).join("\n");
+
+  $("fileCount").textContent = filesLoaded.length;
+  $("log").textContent = `Loaded ${filesLoaded.length} file(s). Now press Build Clean A–Z Index.`;
 });
 
-el("processBtn").onclick = processText;
-el("clearBtn").onclick = () => {
-  rawInput.value = "";
-  buckets = Object.fromEntries(letters.map(l=>[l,[]]));
-  duplicates = [];
-  review = [];
-  master = [];
-  el("rawCount").textContent = el("keptCount").textContent = el("dupCount").textContent = el("reviewCount").textContent = "0";
-  log.textContent = "Ready.";
+$("processBtn").onclick = processText;
+
+$("clearBtn").onclick = () => {
+  filesLoaded = [];
+  resetData();
+  $("rawInput").value = "";
+  setStats(0);
   renderLetters();
   renderPreview();
+  $("log").textContent = "Ready.";
 };
 
-el("downloadMasterBtn").onclick = () => download("MASTER_AZ_INDEX.txt", master.join("\n"));
-el("downloadLetterBtn").onclick = () => download(`${selectedLetter}_CLEAN_BUCKET.txt`, (buckets[selectedLetter] || []).join("\n"));
-el("downloadReviewBtn").onclick = () => download("REVIEW_NOT_DELETED.txt", review.join("\n"));
+$("downloadMaster").onclick = () => download("MASTER_AZ_INDEX.txt", masterText());
+$("downloadLetter").onclick = () => download(`${selected}_CLEAN_BUCKET.txt`, (buckets[selected] || []).join("\n"));
+$("downloadReview").onclick = () => download("REVIEW_NOT_DELETED.txt", review.join("\n"));
+$("downloadDups").onclick = () => download("DUPLICATES_REVIEW.txt", duplicates.join("\n"));
+$("downloadMerged").onclick = () => download("MERGED_ALL_LINES.txt", mergedLines.join("\n"));
+$("downloadDeduped").onclick = () => download("DEDUPED_ALL_LINES.txt", dedupedLines.join("\n"));
+$("downloadReport").onclick = () => download("RUN_REPORT.txt", report || $("log").textContent);
+$("downloadManifest").onclick = () => download("CHECKSUM_MANIFEST.csv", manifest || "file_name,size_bytes,sha256\n");
 
 if("serviceWorker" in navigator){
-  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+  window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
 }
+
+resetData();
+setStats(0);
 renderLetters();
 renderPreview();
 </script>
