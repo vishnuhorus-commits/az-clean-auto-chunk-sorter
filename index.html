@@ -52,15 +52,15 @@
 <body>
 <header>
   <h1>AZ Clean Auto Chunk Sorter</h1>
-  <div class="sub">Production iPad-safe offline engine: load many text files, clean junk, deduplicate, sort A–Z, preserve rejects, and export master archive files.</div>
+  <div class="sub">Production iPad-safe offline engine: load TXT/RTF files, clean junk, deduplicate, sort A–Z, preserve rejects, and export master archive files.</div>
 </header>
 
 <main>
   <section class="grid">
     <div class="card stack">
       <label>1. Drop files or paste raw text</label>
-      <input id="fileInput" type="file" multiple accept=".txt,.text,.md,.csv,.json,.html,.htm" />
-      <div class="small">Use multiple .txt files when possible. Nothing uploads. Everything runs inside the browser.</div>
+      <input id="fileInput" type="file" multiple accept=".txt,.text,.md,.csv,.json,.html,.htm,.rtf" />
+      <div class="small">Use multiple .txt or .rtf files when possible. RTF is converted to plain text in the browser. Nothing uploads.</div>
       <textarea id="rawInput" placeholder="Paste raw alliterations here, or load files above..."></textarea>
 
       <div class="checks">
@@ -174,6 +174,29 @@ async function sha256(text){
   }catch(e){
     return "UNAVAILABLE";
   }
+}
+
+function stripRtf(rtf){
+  let text = String(rtf || "");
+  text = text.replace(/\\par[d]?/g, "\n");
+  text = text.replace(/\\line/g, "\n");
+  text = text.replace(/\\tab/g, "\t");
+  text = text.replace(/\\'[0-9a-fA-F]{2}/g, " ");
+  text = text.replace(/\\u(-?\d+)\??/g, (m, n) => {
+    const code = parseInt(n, 10);
+    if(!Number.isFinite(code)) return " ";
+    try{return String.fromCharCode(code < 0 ? code + 65536 : code);}catch(e){return " ";}
+  });
+  text = text.replace(/\{\\fonttbl[\s\S]*?\}/g, " ");
+  text = text.replace(/\{\\colortbl[\s\S]*?\}/g, " ");
+  text = text.replace(/\{\\stylesheet[\s\S]*?\}/g, " ");
+  text = text.replace(/\\[a-zA-Z]+-?\d* ?/g, " ");
+  text = text.replace(/[{}]/g, " ");
+  text = text.replace(/\r/g, "\n");
+  text = text.replace(/[ \t]+/g, " ");
+  text = text.replace(/\n\s+/g, "\n");
+  text = text.replace(/\n{3,}/g, "\n\n");
+  return text.trim();
 }
 
 function normalize(raw){
@@ -367,11 +390,13 @@ $("fileInput").addEventListener("change", async e => {
   $("log").textContent = `Loading ${list.length} file(s)...`;
 
   for(const file of list){
-    const text = await file.text();
-    const sha = await sha256(text);
+    const originalText = await file.text();
+    const sha = await sha256(originalText);
+    const isRtf = file.name.toLowerCase().endsWith(".rtf");
+    const text = isRtf ? stripRtf(originalText) : originalText;
 
     filesLoaded.push({name:file.name, size:file.size, sha});
-    parts.push(`\n### SOURCE_FILE: ${file.name}\n` + text);
+    parts.push(`\n### SOURCE_FILE: ${file.name}${isRtf ? " [RTF_CONVERTED]" : ""}\n` + text);
 
     await new Promise(requestAnimationFrame);
   }
@@ -382,7 +407,7 @@ $("fileInput").addEventListener("change", async e => {
     filesLoaded.map(f => [escCsv(f.name), f.size, escCsv(f.sha)].join(",")).join("\n");
 
   $("fileCount").textContent = filesLoaded.length;
-  $("log").textContent = `Loaded ${filesLoaded.length} file(s). Now press Build Clean A–Z Index.`;
+  $("log").textContent = `Loaded ${filesLoaded.length} file(s). RTF files were converted to plain text. Now press Build Clean A–Z Index.`;
 });
 
 $("processBtn").onclick = processText;
