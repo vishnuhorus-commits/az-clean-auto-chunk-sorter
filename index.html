@@ -11,7 +11,7 @@
     *{box-sizing:border-box}
     body{margin:0;background:radial-gradient(circle at top,#172554 0,#070b14 42%,#030712 100%);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
     header{position:sticky;top:0;z-index:9;background:rgba(7,11,20,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);padding:18px 14px}
-    main{max-width:1180px;margin:auto;padding:14px 14px 80px}
+    main{max-width:1180px;margin:auto;padding:14px 14px 90px}
     h1{margin:0;font-size:25px;letter-spacing:.2px}
     .sub{color:var(--muted);font-size:14px;margin-top:6px;line-height:1.35}
     .grid{display:grid;grid-template-columns:1fr;gap:14px}
@@ -23,7 +23,7 @@
     .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
     .stack{display:grid;gap:10px}
     textarea{width:100%;min-height:300px;resize:vertical;background:#050814;color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:12px;font-size:15px;line-height:1.45}
-    input[type=file]{width:100%;padding:14px;border:1px dashed #53627a;border-radius:16px;background:#0b1220;color:var(--ink)}
+    input[type=file],input[type=text]{width:100%;padding:14px;border:1px dashed #53627a;border-radius:16px;background:#0b1220;color:var(--ink)}
     button{appearance:none;border:0;border-radius:14px;padding:12px 14px;font-weight:900;color:white;background:#374151;cursor:pointer}
     button:active{transform:scale(.98)}
     button.primary{background:linear-gradient(135deg,var(--accent),#2563eb)}
@@ -31,6 +31,7 @@
     button.warn{background:var(--amber)}
     button.bad{background:var(--red)}
     button.ghost{background:#1f2937;border:1px solid var(--line)}
+    button.full{background:linear-gradient(135deg,#16a34a,#0ea5e9);font-size:15px;width:100%}
     .checks{display:grid;grid-template-columns:1fr;gap:8px}
     @media(min-width:620px){.checks{grid-template-columns:repeat(2,1fr)}}
     .check{background:#0b1220;border:1px solid var(--line);border-radius:14px;padding:10px;color:var(--muted);font-size:13px}
@@ -105,6 +106,11 @@
     <div class="card stack">
       <label>2. A–Z buckets</label>
       <div class="letters" id="letters"></div>
+
+      <div class="stack">
+        <button class="full" id="downloadFullSet">Download FULL OUTPUT SET</button>
+        <div class="small">Downloads master files, review files, logs, and A.txt through Z.txt. On iPad, approve multiple downloads if Safari asks.</div>
+      </div>
 
       <div class="row">
         <button class="good" id="downloadMaster">MASTER_AZ_INDEX</button>
@@ -291,17 +297,7 @@ async function processText(){
   const now = new Date().toISOString();
   const active = ABC.filter(l => (buckets[l] || []).length).join(" ") || "NONE";
 
-  report = `AZ CLEAN AUTO CHUNK SORTER RUN REPORT
-RUN_TIME: ${now}
-FILES_LOADED: ${filesLoaded.length}
-RAW_NONBLANK_LINES: ${total}
-KEPT_CLEAN_LINES: ${dedupedLines.length}
-DUPLICATES_REMOVED: ${duplicates.length}
-REVIEW_NOT_DELETED: ${review.length}
-ACTIVE_LETTERS: ${active}
-RULES: uppercase, min_words=${$("minWords").value}, letters_only=${$("lettersOnly").checked}, dedupe=${$("dedupe").checked}, strict_alliteration=${$("strictAllit").checked}
-
-NO ORIGINAL FILES WERE MODIFIED.`;
+  report = `AZ CLEAN AUTO CHUNK SORTER RUN REPORT\nRUN_TIME: ${now}\nFILES_LOADED: ${filesLoaded.length}\nRAW_NONBLANK_LINES: ${total}\nKEPT_CLEAN_LINES: ${dedupedLines.length}\nDUPLICATES_REMOVED: ${duplicates.length}\nREVIEW_NOT_DELETED: ${review.length}\nACTIVE_LETTERS: ${active}\nRULES: uppercase, min_words=${$("minWords").value}, letters_only=${$("lettersOnly").checked}, dedupe=${$("dedupe").checked}, strict_alliteration=${$("strictAllit").checked}\n\nNO ORIGINAL FILES WERE MODIFIED.`;
 
   if(!manifest){
     manifest = "file_name,size_bytes,sha256\n" +
@@ -312,7 +308,7 @@ NO ORIGINAL FILES WERE MODIFIED.`;
   renderLetters();
   renderPreview();
 
-  $("log").textContent = report + "\n\nOUTPUTS READY: MASTER, LETTER BUCKETS, REVIEW, DUPLICATES, REPORT, MANIFEST.";
+  $("log").textContent = report + "\n\nOUTPUTS READY: FULL SET, MASTER, LETTER BUCKETS, REVIEW, DUPLICATES, REPORT, MANIFEST.";
 }
 
 function download(name, text){
@@ -326,7 +322,41 @@ function download(name, text){
   a.click();
   a.remove();
 
-  setTimeout(() => URL.revokeObjectURL(url), 700);
+  setTimeout(() => URL.revokeObjectURL(url), 900);
+}
+
+function stamp(){
+  return new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+}
+
+function outputFiles(){
+  const s = stamp();
+  const files = [
+    [`${s}_MASTER_AZ_INDEX.txt`, masterText()],
+    [`${s}_MERGED_ALL_LINES.txt`, mergedLines.join("\n")],
+    [`${s}_DEDUPED_ALL_LINES.txt`, dedupedLines.join("\n")],
+    [`${s}_REVIEW_NOT_DELETED.txt`, review.join("\n")],
+    [`${s}_DUPLICATES_REVIEW.txt`, duplicates.join("\n")],
+    [`${s}_RUN_REPORT.txt`, report || $("log").textContent],
+    [`${s}_CHECKSUM_MANIFEST.csv`, manifest || "file_name,size_bytes,sha256\n"]
+  ];
+
+  ABC.forEach(l => files.push([`${s}_${l}_CLEAN_BUCKET.txt`, (buckets[l] || []).join("\n") ]));
+  return files;
+}
+
+async function downloadFullSet(){
+  const files = outputFiles();
+  $("log").textContent = `Downloading full output set: ${files.length} files. On iPad, approve multiple downloads if asked.`;
+
+  for(let i = 0; i < files.length; i++){
+    const [name, text] = files[i];
+    download(name, text);
+    $("log").textContent = `Downloading ${i + 1} of ${files.length}: ${name}`;
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+
+  $("log").textContent = `FULL OUTPUT SET COMPLETE. Downloaded ${files.length} files: master, merged, deduped, review, duplicates, report, manifest, and A-Z buckets.`;
 }
 
 $("fileInput").addEventListener("change", async e => {
@@ -367,6 +397,7 @@ $("clearBtn").onclick = () => {
   $("log").textContent = "Ready.";
 };
 
+$("downloadFullSet").onclick = downloadFullSet;
 $("downloadMaster").onclick = () => download("MASTER_AZ_INDEX.txt", masterText());
 $("downloadLetter").onclick = () => download(`${selected}_CLEAN_BUCKET.txt`, (buckets[selected] || []).join("\n"));
 $("downloadReview").onclick = () => download("REVIEW_NOT_DELETED.txt", review.join("\n"));
