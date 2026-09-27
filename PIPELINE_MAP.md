@@ -109,3 +109,17 @@ external credentials (no Google Cloud service account needed):
   as items are found; nothing here touches or removes originals in Drive.
 - `GET /api/status` on the Vercel app shows the last 10 runs and current
   queue counts, so "is it actually running" is a page load, not a guess.
+
+## The Vault (added 2026-09-27)
+
+`vault.html` is the one private front door to the whole system - browse and
+search the real archive, see whether the bridge is alive, jump straight to
+an entry's original file in Drive. Gated by a single shared passphrase
+(`VAULT_PASSPHRASE`, Vercel env var only, never committed) sent as an
+`x-vault-key` header; `api/vault/stats.js` and `api/vault/search.js` reject
+anything else with 401. No login system, no new service, no new database -
+same anon-key REST calls the rest of this app already makes, just fenced
+behind one shared key. Drive links come from the real
+`entries.source_file_id -> source_files.drive_url` foreign key the worker
+already fills in; entries from before that link existed simply show no
+link, nothing is faked.
