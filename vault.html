@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Vault</title>
+<style>
+  :root{
+    --bg:#08070b;
+    --panel:#121019;
+    --panel-2:#17141f;
+    --border:#2a2433;
+    --gold:#d4af37;
+    --gold-dim:#8a7328;
+    --teal:#2dd4bf;
+    --text:#ece7d8;
+    --dim:#8f8a99;
+    --bad:#e05a5a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; background:
+      radial-gradient(ellipse at 20% -10%, #1c1626 0%, transparent 55%),
+      radial-gradient(ellipse at 100% 0%, #10151a 0%, transparent 45%),
+      var(--bg);
+    color:var(--text); font-family: "Georgia", "Iowan Old Style", serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:920px; margin:0 auto; padding:28px 18px 80px;}
+  h1{
+    font-size:1.5rem; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--gold); font-weight:400; margin:0 0 4px;
+    text-shadow:0 0 18px rgba(212,175,55,.25);
+  }
+  .sub{color:var(--dim); font-size:.85rem; margin:0 0 24px; font-family:system-ui,sans-serif;}
+  .card{
+    background:linear-gradient(180deg, var(--panel), var(--panel-2));
+    border:1px solid var(--border); border-radius:14px; padding:20px;
+    margin-bottom:16px; box-shadow:0 12px 28px -18px rgba(0,0,0,.7);
+  }
+  .gate input{
+    width:100%; padding:12px 14px; border-radius:8px; border:1px solid var(--border);
+    background:#0d0b12; color:var(--text); font-size:1rem; font-family:system-ui,sans-serif;
+    outline:none;
+  }
+  .gate input:focus{border-color:var(--gold-dim);}
+  button{
+    font-family:system-ui,sans-serif; cursor:pointer; border-radius:8px;
+    border:1px solid var(--gold-dim); background:transparent; color:var(--gold);
+    padding:10px 16px; font-size:.85rem; letter-spacing:.03em; transition:all .15s;
+  }
+  button:hover{background:rgba(212,175,55,.1); border-color:var(--gold);}
+  .err{color:var(--bad); font-size:.8rem; margin-top:10px; font-family:system-ui,sans-serif; display:none;}
+  #app{display:none;}
+  .stats{display:flex; flex-wrap:wrap; gap:22px; font-family:system-ui,sans-serif;}
+  .stat{min-width:100px;}
+  .stat .n{font-size:1.6rem; color:var(--gold); font-family:Georgia,serif;}
+  .stat .l{font-size:.72rem; color:var(--dim); text-transform:uppercase; letter-spacing:.08em;}
+  .stat.ok .n{color:var(--teal);}
+  .stat.warn .n{color:var(--bad);}
+  .controls{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px;}
+  .controls input[type=text]{
+    flex:1; min-width:180px; padding:10px 12px; border-radius:8px;
+    border:1px solid var(--border); background:#0d0b12; color:var(--text);
+    font-family:system-ui,sans-serif; outline:none;
+  }
+  .letters{display:flex; flex-wrap:wrap; gap:4px; margin-bottom:14px;}
+  .letters button{padding:5px 9px; font-size:.75rem; opacity:.55;}
+  .letters button.on{opacity:1; background:rgba(212,175,55,.12);}
+  .rows{display:flex; flex-direction:column; gap:0;}
+  .row{
+    display:flex; justify-content:space-between; align-items:baseline; gap:14px;
+    padding:11px 4px; border-bottom:1px solid var(--border);
+  }
+  .row:last-child{border-bottom:none;}
+  .row .txt{font-size:1rem;}
+  .row .meta{font-family:system-ui,sans-serif; font-size:.72rem; color:var(--dim); white-space:nowrap;}
+  .row a{color:var(--teal); text-decoration:none;}
+  .row a:hover{text-decoration:underline;}
+  .empty{color:var(--dim); font-family:system-ui,sans-serif; font-size:.85rem; padding:14px 4px;}
+  .loading{color:var(--dim); font-family:system-ui,sans-serif; font-size:.8rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Vault</h1>
+  <p class="sub">Private archive &amp; bridge — the front door.</p>
+
+  <div class="card gate" id="gate">
+    <input type="password" id="key" placeholder="Key" autofocus />
+    <div style="margin-top:12px;"><button id="enter">Enter</button></div>
+    <div class="err" id="gateErr">Wrong key.</div>
+  </div>
+
+  <div id="app">
+    <div class="card">
+      <div class="stats" id="stats"><span class="loading">Loading status…</span></div>
+    </div>
+
+    <div class="card">
+      <div class="controls">
+        <input type="text" id="search" placeholder="Search the archive…" />
+        <button id="clear">Clear</button>
+      </div>
+      <div class="letters" id="letters"></div>
+      <div class="rows" id="rows"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY_STORAGE = "vault_key";
+  var key = sessionStorage.getItem(KEY_STORAGE) || "";
+  var activeLetter = "";
+  var searchTimer = null;
+
+  var gate = document.getElementById("gate");
+  var app = document.getElementById("app");
+  var gateErr = document.getElementById("gateErr");
+
+  function vaultFetch(path){
+    return fetch(path, { headers: { "x-vault-key": key } }).then(function(r){
+      if (r.status === 401) throw { unauthorized: true };
+      return r.json();
+    });
+  }
+
+  function showApp(){
+    gate.style.display = "none";
+    app.style.display = "block";
+    loadStats();
+    loadEntries();
+  }
+
+  function tryEnter(k){
+    key = k;
+    vaultFetch("/api/vault/stats").then(function(data){
+      if (!data.ok) throw { unauthorized: true };
+      sessionStorage.setItem(KEY_STORAGE, key);
+      showApp();
+      renderStats(data);
+    }).catch(function(){
+      gateErr.style.display = "block";
+    });
+  }
+
+  document.getElementById("enter").onclick = function(){
+    tryEnter(document.getElementById("key").value);
+  };
+  document.getElementById("key").addEventListener("keydown", function(e){
+    if (e.key === "Enter") tryEnter(this.value);
+  });
+
+  var letters = document.getElementById("letters");
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").forEach(function(L){
+    var b = document.createElement("button");
+    b.textContent = L;
+    b.onclick = function(){
+      activeLetter = (activeLetter === L) ? "" : L;
+      Array.from(letters.children).forEach(function(el){ el.classList.remove("on"); });
+      if (activeLetter) b.classList.add("on");
+      loadEntries();
+    };
+    letters.appendChild(b);
+  });
+
+  document.getElementById("search").addEventListener("input", function(){
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadEntries, 300);
+  });
+  document.getElementById("clear").onclick = function(){
+    document.getElementById("search").value = "";
+    activeLetter = "";
+    Array.from(letters.children).forEach(function(el){ el.classList.remove("on"); });
+    loadEntries();
+  };
+
+  function timeAgo(iso){
+    if (!iso) return "never";
+    var mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return mins + "m ago";
+    var hrs = Math.round(mins / 60);
+    if (hrs < 24) return hrs + "h ago";
+    return Math.round(hrs / 24) + "d ago";
+  }
+
+  function renderStats(data){
+    var stats = document.getElementById("stats");
+    var q = data.queue_by_status || {};
+    var pending = (q.PENDING || 0) + (q.PROCESSING || 0);
+    var lastRun = data.last_run;
+    var runOk = lastRun && lastRun.status === "completed";
+    stats.innerHTML =
+      '<div class="stat"><div class="n">' + (data.total_entries || 0).toLocaleString() + '</div><div class="l">Entries</div></div>' +
+      '<div class="stat ' + (runOk ? "ok" : "warn") + '"><div class="n">' + (lastRun ? timeAgo(lastRun.started_at) : "—") + '</div><div class="l">Last bridge run</div></div>' +
+      '<div class="stat"><div class="n">' + pending + '</div><div class="l">Queued</div></div>' +
+      '<div class="stat"><div class="n">' + (q.COMPLETED || 0) + '</div><div class="l">Drained</div></div>';
+  }
+
+  function loadStats(){
+    vaultFetch("/api/vault/stats").then(renderStats).catch(function(){});
+  }
+
+  function loadEntries(){
+    var rows = document.getElementById("rows");
+    rows.innerHTML = '<div class="loading">Loading…</div>';
+    var params = new URLSearchParams();
+    if (activeLetter) params.set("letter", activeLetter);
+    var q = document.getElementById("search").value.trim();
+    if (q) params.set("search", q);
+    params.set("limit", "150");
+
+    vaultFetch("/api/vault/search?" + params.toString()).then(function(data){
+      var entries = data.entries || [];
+      if (!entries.length){
+        rows.innerHTML = '<div class="empty">Nothing found.</div>';
+        return;
+      }
+      rows.innerHTML = "";
+      entries.forEach(function(e){
+        var row = document.createElement("div");
+        row.className = "row";
+        var drive = e.source_files && e.source_files.drive_url;
+        var meta = e.letter + (drive ? ' &middot; <a href="' + drive + '" target="_blank" rel="noopener">source</a>' : "");
+        row.innerHTML = '<span class="txt"></span><span class="meta">' + meta + '</span>';
+        row.querySelector(".txt").textContent = e.clean_text;
+        rows.appendChild(row);
+      });
+    }).catch(function(){
+      rows.innerHTML = '<div class="empty">Could not load.</div>';
+    });
+  }
+
+  if (key) tryEnter(key);
+})();
+</script>
+</body>
+</html>

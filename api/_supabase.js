@@ -57,6 +57,24 @@ async function supabaseRequest(path, options = {}) {
   return data;
 }
 
+// The Vault is the one private front door: gated by a single shared
+// passphrase (VAULT_PASSPHRASE, set only in Vercel, never committed).
+// Checked as a header so the page never puts the key in a URL/log line.
+function requireVaultKey(req) {
+  const expected = process.env.VAULT_PASSPHRASE;
+  if (!expected) {
+    const error = new Error("Vault is not configured (VAULT_PASSPHRASE missing).");
+    error.statusCode = 503;
+    throw error;
+  }
+  const provided = req.headers["x-vault-key"];
+  if (provided !== expected) {
+    const error = new Error("Wrong key.");
+    error.statusCode = 401;
+    throw error;
+  }
+}
+
 function sendJson(res, status, payload) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -130,4 +148,5 @@ module.exports = {
   handleError,
   normalizeEntry,
   sha256,
+  requireVaultKey,
 };
