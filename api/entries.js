@@ -32,7 +32,7 @@ module.exports = async function handler(req, res) {
 
     if (req.method === "POST") {
       const entry = normalizeEntry(req.body || {});
-      const data = await supabaseRequest("entries?on_conflict=clean_text", {
+      const data = await supabaseRequest("entries?on_conflict=content_hash", {
         method: "POST",
         headers: {
           Prefer: "resolution=ignore-duplicates,return=representation",

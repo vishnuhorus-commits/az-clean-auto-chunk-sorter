@@ -42,7 +42,7 @@ module.exports = async function handler(req, res) {
     let inserted = [];
 
     if (entries.length) {
-      inserted = await supabaseRequest("entries?on_conflict=clean_text", {
+      inserted = await supabaseRequest("entries?on_conflict=content_hash", {
         method: "POST",
         headers: {
           Prefer: "resolution=ignore-duplicates,return=representation",

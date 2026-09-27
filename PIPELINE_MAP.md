@@ -85,3 +85,27 @@ Related repos may support rhyme writing, master indexing, or experiments, but th
 ## Builder Note
 
 This file seals the current direction: one pipeline, one bridge, one source of truth.
+
+## Automated Loop (added 2026-09-26)
+
+This repo's REST API (`api/entries.js`, `api/import.js`) was live but silently broken:
+Vercel had no `SUPABASE_URL` / key configured at all, and the upsert used
+`on_conflict=clean_text`, a column with no unique constraint (only
+`content_hash` does) - so every insert would have errored. Both are fixed.
+
+The actual scheduled loop lives in Supabase, not Vercel, to avoid a new set of
+external credentials (no Google Cloud service account needed):
+
+- A Supabase Edge Function, `machine-4-worker`, drains one row at a time from
+  the existing `machine_4_queue` table (built for exactly this) - splits its
+  `payload_text` into lines, dedupes by `content_hash`, inserts into `entries`,
+  and always logs a row to `run_log`, whether it found work or not.
+- A `pg_cron` job (`machine_4_worker_loop`) calls that function every 30
+  minutes. Slow on purpose, per Horus's own "just do something positive"
+  instruction - the point is a real, honest, provable loop, not speed.
+- Whatever already feeds Google Drive files into `machine_4_queue` (or a
+  human, or a future Claude session) is the only other piece needed to make
+  this fully automatic end-to-end from Drive. Today the queue is fed by hand
+  as items are found; nothing here touches or removes originals in Drive.
+- `GET /api/status` on the Vercel app shows the last 10 runs and current
+  queue counts, so "is it actually running" is a page load, not a guess.

@@ -1,14 +1,24 @@
+const crypto = require("crypto");
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+// This app only ever needs the anon key: RLS on `entries` already allows
+// anon insert/select/update (see Living Memory, which uses the same key).
+// SUPABASE_SERVICE_ROLE_KEY is kept as a fallback name so an older env-var
+// setup still works, but nothing here needs the real service-role secret.
+const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 function assertConfigured() {
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
     const error = new Error(
-      "Backend is not configured. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to the deployment environment."
+      "Backend is not configured. Add SUPABASE_URL and SUPABASE_ANON_KEY to the deployment environment."
     );
     error.statusCode = 503;
     throw error;
   }
+}
+
+function sha256(text) {
+  return crypto.createHash("sha256").update(text, "utf8").digest("hex");
 }
 
 async function supabaseRequest(path, options = {}) {
@@ -17,8 +27,8 @@ async function supabaseRequest(path, options = {}) {
   const response = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     ...options,
     headers: {
-      apikey: SUPABASE_SERVICE_ROLE_KEY,
-      Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
@@ -106,6 +116,11 @@ function normalizeEntry(input = {}) {
     source_file: input.source_file ? String(input.source_file) : null,
     source_batch: input.source_batch ? String(input.source_batch) : null,
     notes: input.notes ? String(input.notes) : null,
+    // entries.content_hash is the column with the real unique index (see
+    // entries_content_hash_uidx) - clean_text has NO unique constraint, so
+    // an on_conflict=clean_text upsert was silently failing before this fix.
+    content_hash: sha256(cleanText),
+    word_count: cleanText.split(" ").filter(Boolean).length,
   };
 }
 
@@ -114,4 +129,5 @@ module.exports = {
   sendJson,
   handleError,
   normalizeEntry,
+  sha256,
 };
