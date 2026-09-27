@@ -10,17 +10,17 @@ module.exports = async function handler(req, res) {
       return sendJson(res, 405, { ok: false, error: "Method not allowed" });
     }
 
-    const [runLog, queueCounts, entriesCount] = await Promise.all([
+    // machine_4_queue itself holds raw unpublished text and is locked down;
+    // machine_4_queue_status_counts is a status-only aggregate view made
+    // public on purpose (see migration expose_read_only_bridge_status).
+    const [runLog, queueCounts] = await Promise.all([
       supabaseRequest("run_log?select=id,machine,started_at,ended_at,items_processed,status&order=started_at.desc&limit=10"),
-      supabaseRequest("machine_4_queue?select=status&limit=1000"),
-      supabaseRequest("entries?select=id&limit=1", {
-        headers: { Prefer: "count=exact" },
-      }),
+      supabaseRequest("machine_4_queue_status_counts?select=status,count"),
     ]);
 
     const queueByStatus = {};
     (queueCounts || []).forEach((row) => {
-      queueByStatus[row.status] = (queueByStatus[row.status] || 0) + 1;
+      queueByStatus[row.status] = row.count;
     });
 
     return sendJson(res, 200, {
