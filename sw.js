@@ -1,4 +1,4 @@
-const CACHE_NAME = "az-clean-v2";
+const CACHE_NAME = "az-clean-v3";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./db-ui.js"];
 
 self.addEventListener("install", event => {
